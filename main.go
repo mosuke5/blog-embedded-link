@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -17,6 +18,7 @@ type SiteData struct {
 	OgDescription string
 	OgSiteName    string
 	OgUrl         string
+	Favicon       string
 }
 
 func main() {
@@ -90,5 +92,19 @@ func getSiteData(d *goquery.Document) SiteData {
 			siteData.OgUrl = ogUrl
 		}
 	})
+	siteData.Favicon = strings.TrimRight(siteData.OgUrl, "/") + getFavicon(d)
 	return *siteData
+}
+
+func getFavicon(d *goquery.Document) string {
+	favicon := ""
+	linkSelection := d.Find("head link")
+	linkSelection.Each(func(index int, s *goquery.Selection) {
+		attr, _ := s.Attr("rel")
+		switch attr {
+		case "icon":
+			favicon, _ = s.Attr("href")
+		}
+	})
+	return favicon
 }

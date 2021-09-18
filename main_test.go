@@ -27,7 +27,8 @@ func TestGetSiteData(t *testing.T) {
 		OgTitle:       "test og title",
 		OgDescription: "test og description",
 		OgSiteName:    "my super blog",
-		OgUrl:         "https://test/"}
+		OgUrl:         "https://test/",
+		Favicon:       "https://test/favicon.ico"}
 
 	if actual != expected {
 		t.Errorf("getTitle() = '%s', but extected value is '%s'", actual, expected)
