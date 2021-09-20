@@ -10,7 +10,9 @@
     </div>
     <div class="belg-description">{{ .Description }}</div>
     <div class="belg-site">
-      <img src="{{ .BaseUrl }}{{ .Favicon }}" class="belg-site-icon">
+      {{ if .Favicon -}}
+      <img src="{{ .Favicon }}" class="belg-site-icon">
+      {{ end -}}
       <span class="belg-site-name">{{ .SiteName }}</span>
     </div>
   </div>

@@ -43,6 +43,23 @@ func TestBuildEmbededLinkWithoutOg(t *testing.T) {
 	}
 }
 
+func TestBuildEmbededLinkNoFavicon(t *testing.T) {
+	httpmock.Activate()
+	defer httpmock.DeactivateAndReset()
+
+	// Exact URL match
+	httpmock.RegisterResponder("GET", "https://test.com/article",
+		httpmock.NewStringResponder(200, httpmock.File("testdata/test_no_favicon.html").String()))
+
+	url := "https://test.com/article"
+	actual := buildEmbededLink(url)
+	expected := expectedHtmlNoFavicon()
+
+	if actual != expected {
+		t.Errorf("getTitle() = '%s', but extected value is '%s'", actual, expected)
+	}
+}
+
 func TestBuildEmbededLinkWithWrongUrl(t *testing.T) {
 	httpmock.Activate()
 	defer httpmock.DeactivateAndReset()
@@ -94,7 +111,7 @@ func TestBuildResultHtml(t *testing.T) {
 	resultData := ResultData{
 		Title:       "test og title",
 		Description: "test og description",
-		Favicon:     "/favicon.ico",
+		Favicon:     "https://test.com/favicon.ico",
 		Type:        "article",
 		Image:       "https://test.com/ogp-image.png",
 		SiteName:    "my super blog",
@@ -128,7 +145,7 @@ func TestBuildResultData(t *testing.T) {
 	expected := ResultData{
 		Title:       "test og title",
 		Description: "test og description",
-		Favicon:     "/favicon.ico",
+		Favicon:     "https://test.com/favicon.ico",
 		Type:        "article",
 		Image:       "https://test.com/ogp-image.png",
 		SiteName:    "my super blog",
@@ -153,7 +170,30 @@ func TestBuildResultDataWithoutOg(t *testing.T) {
 	expected := ResultData{
 		Title:       "test normal title",
 		Description: "test normal description",
-		Favicon:     "/favicon.ico",
+		Favicon:     "https://test.com/favicon.ico",
+		Image:       "",
+		SiteName:    "test.com",
+		Url:         "https://test.com/article",
+		BaseUrl:     "https://test.com"}
+
+	if actual != expected {
+		t.Errorf("getTitle() = '%s', but extected value is '%s'", actual, expected)
+	}
+}
+
+// Faviconがないとき
+func TestBuildResultDataNoFavicon(t *testing.T) {
+	sitedata := SiteData{
+		RequestUrl:     "https://test.com/article",
+		RequestBaseUrl: "https://test.com",
+		Title:          "test normal title",
+		Description:    "test normal description"}
+
+	actual := buildResultData(sitedata)
+	expected := ResultData{
+		Title:       "test normal title",
+		Description: "test normal description",
+		Favicon:     "",
 		Image:       "",
 		SiteName:    "test.com",
 		Url:         "https://test.com/article",
@@ -239,6 +279,23 @@ func expectedHtmlWithoutOg() string {
     <div class="belg-site">
       <img src="https://test.com/favicon.ico" class="belg-site-icon">
       <span class="belg-site-name">test.com</span>
+    </div>
+  </div>
+</div>`
+}
+
+func expectedHtmlNoFavicon() string {
+	return `<div class="belg-link">
+  <div class="belg-left">
+    <img src="https://test.com/ogp-image.png" />
+  </div>
+  <div class="belg-right">
+    <div class="belg-title">
+      <a href="https://test.com/article" target="_blank">test og title</a>
+    </div>
+    <div class="belg-description">test og description</div>
+    <div class="belg-site">
+      <span class="belg-site-name">my super blog</span>
     </div>
   </div>
 </div>`

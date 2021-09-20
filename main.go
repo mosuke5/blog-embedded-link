@@ -99,7 +99,6 @@ func buildResultData(siteData SiteData) ResultData {
 	resultData.Url = siteData.RequestUrl
 	resultData.Title = siteData.Title
 	resultData.Description = siteData.Description
-	resultData.Favicon = siteData.Favicon
 	resultData.Type = siteData.OgType
 	resultData.Image = siteData.OgImage
 	resultData.SiteName = getDomain(siteData.RequestBaseUrl)
@@ -119,6 +118,10 @@ func buildResultData(siteData SiteData) ResultData {
 
 	if siteData.OgSiteName != "" {
 		resultData.SiteName = siteData.OgSiteName
+	}
+
+	if siteData.Favicon != "" {
+		resultData.Favicon = siteData.RequestBaseUrl + siteData.Favicon
 	}
 
 	return resultData
@@ -178,8 +181,8 @@ func getFavicon(d *goquery.Document) string {
 	linkSelection := d.Find("head link")
 	linkSelection.Each(func(index int, s *goquery.Selection) {
 		attr, _ := s.Attr("rel")
-		switch attr {
-		case "icon":
+
+		if attr == "icon" || attr == "shortcut icon" {
 			favicon, _ = s.Attr("href")
 		}
 	})
