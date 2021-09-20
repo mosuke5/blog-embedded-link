@@ -6,21 +6,24 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 
 	"github.com/PuerkitoBio/goquery"
 )
 
 type SiteData struct {
-	Title         string
-	Description   string
-	Favicon       string
-	OgType        string
-	OgImage       string
-	OgTitle       string
-	OgDescription string
-	OgSiteName    string
-	OgUrl         string
+	RequestUrl     string
+	RequestBaseUrl string
+	Title          string
+	Description    string
+	Favicon        string
+	OgType         string
+	OgImage        string
+	OgTitle        string
+	OgDescription  string
+	OgSiteName     string
+	OgUrl          string
 }
 
 type ResultData struct {
@@ -31,6 +34,7 @@ type ResultData struct {
 	Image       string
 	SiteName    string
 	Url         string
+	BaseUrl     string
 }
 
 var osExit = os.Exit
@@ -43,8 +47,13 @@ func main() {
 	fmt.Print(buildEmbededLink(url))
 }
 
-func buildEmbededLink(url string) string {
-	resp, err := http.Get(url)
+func buildEmbededLink(requestUrl string) string {
+	parsedUrl, err := url.Parse(requestUrl)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	resp, err := http.Get(requestUrl)
 
 	if err != nil {
 		log.Fatal(err)
@@ -62,7 +71,11 @@ func buildEmbededLink(url string) string {
 		log.Fatal(err)
 	}
 
-	siteData := getSiteData(doc)
+	siteData := SiteData{
+		RequestUrl:     resp.Request.URL.String(),
+		RequestBaseUrl: parsedUrl.Scheme + "://" + parsedUrl.Host}
+	siteData = getSiteData(siteData, doc)
+	fmt.Println(siteData)
 	resultData := buildResultData(siteData)
 	return buildResultHtml(resultData)
 }
@@ -84,6 +97,14 @@ func buildResultHtml(resultData ResultData) string {
 // SiteDataをResultDataに変換する
 func buildResultData(siteData SiteData) ResultData {
 	resultData := ResultData{}
+	resultData.Url = siteData.RequestUrl
+	resultData.Title = siteData.Title
+	resultData.Description = siteData.Description
+	resultData.Favicon = siteData.Favicon
+	resultData.Type = siteData.OgType
+	resultData.Image = siteData.OgImage
+	resultData.SiteName = getDomain(siteData.RequestBaseUrl)
+	resultData.BaseUrl = siteData.RequestBaseUrl
 
 	if siteData.OgTitle != "" {
 		resultData.Title = siteData.OgTitle
@@ -93,17 +114,18 @@ func buildResultData(siteData SiteData) ResultData {
 		resultData.Description = siteData.OgDescription
 	}
 
-	resultData.Favicon = siteData.Favicon
-	resultData.Type = siteData.OgType
-	resultData.Image = siteData.OgImage
-	resultData.SiteName = siteData.OgSiteName
-	resultData.Url = siteData.OgUrl
+	if siteData.OgUrl != "" {
+		resultData.Url = siteData.OgUrl
+	}
+
+	if siteData.OgSiteName != "" {
+		resultData.SiteName = siteData.OgSiteName
+	}
 
 	return resultData
 }
 
-func getSiteData(d *goquery.Document) SiteData {
-	siteData := new(SiteData)
+func getSiteData(siteData SiteData, d *goquery.Document) SiteData {
 	metaSelection := d.Find("head meta")
 	metaSelection.Each(func(index int, s *goquery.Selection) {
 		attr, _ := s.Attr("property")
@@ -132,7 +154,7 @@ func getSiteData(d *goquery.Document) SiteData {
 	siteData.Title = getTitle(d)
 	siteData.Description = getDescription(d)
 	siteData.Favicon = getFavicon(d)
-	return *siteData
+	return siteData
 }
 
 func getTitle(d *goquery.Document) string {
@@ -163,4 +185,13 @@ func getFavicon(d *goquery.Document) string {
 		}
 	})
 	return favicon
+}
+
+func getDomain(requestUrl string) string {
+	u, err := url.Parse(requestUrl)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return u.Hostname()
 }

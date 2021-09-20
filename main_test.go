@@ -34,22 +34,21 @@ func TestBuildEmbededLink(t *testing.T) {
 		t.Errorf("Expected exit code: %d, status: %d", exp, status)
 	}
 
-	expected := `<div class="belg-link">
-  <div class="belg-left">
-    <img src="https://test/ogp-image.png" />
-  </div>
-  <div class="belg-right">
-    <div class="belg-title">test og title</div>
-    <div class="belg-description">test og description</div>
-    <div class="belg-site-name">my super blog</div>
-  </div>
-</div>`
+	expected := expectedHtml()
 
 	if actual != expected {
 		t.Errorf("getTitle() = '%s', but extected value is '%s'", actual, expected)
 	}
 }
-func TestBuildEmbededLinkWithWrongUrl(t *testing.T) {
+
+func TestBuildEmbededLinkWithoutOg(t *testing.T) {
+	httpmock.Activate()
+	defer httpmock.DeactivateAndReset()
+
+	// Exact URL match
+	httpmock.RegisterResponder("GET", "https://test.com/article",
+		httpmock.NewStringResponder(200, httpmock.File("testdata/test_without_og.html").String()))
+
 	oldExit := osExit
 
 	defer func() { osExit = oldExit }()
@@ -60,7 +59,38 @@ func TestBuildEmbededLinkWithWrongUrl(t *testing.T) {
 	}
 	osExit = exit
 
-	url := "https://blog.mosuke.tech/notfound"
+	url := "https://test.com/article"
+	actual := buildEmbededLink(url)
+
+	if exp := 0; status != exp {
+		t.Errorf("Expected exit code: %d, status: %d", exp, status)
+	}
+
+	expected := expectedHtmlWithoutOg()
+
+	if actual != expected {
+		t.Errorf("getTitle() = '%s', but extected value is '%s'", actual, expected)
+	}
+}
+
+func TestBuildEmbededLinkWithWrongUrl(t *testing.T) {
+	httpmock.Activate()
+	defer httpmock.DeactivateAndReset()
+
+	// Exact URL match
+	httpmock.RegisterResponder("GET", "https://test.com/notfound",
+		httpmock.NewStringResponder(404, "not found"))
+
+	oldExit := osExit
+	defer func() { osExit = oldExit }()
+
+	var status int
+	exit := func(code int) {
+		status = code
+	}
+	osExit = exit
+
+	url := "https://test.com/notfound"
 	buildEmbededLink(url)
 
 	if exp := 1; status != exp {
@@ -93,38 +123,33 @@ func TestBuildResultHtml(t *testing.T) {
 		Description: "test og description",
 		Favicon:     "/favicon.ico",
 		Type:        "article",
-		Image:       "https://test/ogp-image.png",
+		Image:       "https://test.com/ogp-image.png",
 		SiteName:    "my super blog",
-		Url:         "https://test/"}
+		Url:         "https://test.com/article",
+		BaseUrl:     "https://test.com"}
 
 	actual := buildResultHtml(resultData)
-	expected := `<div class="belg-link">
-  <div class="belg-left">
-    <img src="https://test/ogp-image.png" />
-  </div>
-  <div class="belg-right">
-    <div class="belg-title">test og title</div>
-    <div class="belg-description">test og description</div>
-    <div class="belg-site-name">my super blog</div>
-  </div>
-</div>`
+	expected := expectedHtml()
 
 	if actual != expected {
 		t.Errorf("getTitle() = '%s', but extected value is '%s'", actual, expected)
 	}
 }
 
+// OGの情報が全て揃っている場合。該当項目は上書きを想定
 func TestBuildResultData(t *testing.T) {
 	sitedata := SiteData{
-		Title:         "test normal title",
-		Description:   "test normal description",
-		Favicon:       "/favicon.ico",
-		OgType:        "article",
-		OgImage:       "https://test/ogp-image.png",
-		OgTitle:       "test og title",
-		OgDescription: "test og description",
-		OgSiteName:    "my super blog",
-		OgUrl:         "https://test/"}
+		RequestUrl:     "https://test.com/article",
+		RequestBaseUrl: "https://test.com",
+		Title:          "test normal title",
+		Description:    "test normal description",
+		Favicon:        "/favicon.ico",
+		OgType:         "article",
+		OgImage:        "https://test.com/ogp-image.png",
+		OgTitle:        "test og title",
+		OgDescription:  "test og description",
+		OgSiteName:     "my super blog",
+		OgUrl:          "https://test.com/article"}
 
 	actual := buildResultData(sitedata)
 	expected := ResultData{
@@ -132,16 +157,41 @@ func TestBuildResultData(t *testing.T) {
 		Description: "test og description",
 		Favicon:     "/favicon.ico",
 		Type:        "article",
-		Image:       "https://test/ogp-image.png",
+		Image:       "https://test.com/ogp-image.png",
 		SiteName:    "my super blog",
-		Url:         "https://test/"}
+		Url:         "https://test.com/article",
+		BaseUrl:     "https://test.com"}
 
 	if actual != expected {
 		t.Errorf("getTitle() = '%s', but extected value is '%s'", actual, expected)
 	}
 }
 
-// すべてのデータが揃った状態でデータがとれるか
+// OGの情報が全て揃っていない場合。該当項目のみ上書きを想定
+func TestBuildResultDataWithoutOg(t *testing.T) {
+	sitedata := SiteData{
+		RequestUrl:     "https://test.com/article",
+		RequestBaseUrl: "https://test.com",
+		Title:          "test normal title",
+		Description:    "test normal description",
+		Favicon:        "/favicon.ico"}
+
+	actual := buildResultData(sitedata)
+	expected := ResultData{
+		Title:       "test normal title",
+		Description: "test normal description",
+		Favicon:     "/favicon.ico",
+		Image:       "",
+		SiteName:    "test.com",
+		Url:         "https://test.com/article",
+		BaseUrl:     "https://test.com"}
+
+	if actual != expected {
+		t.Errorf("getTitle() = '%s', but extected value is '%s'", actual, expected)
+	}
+}
+
+// HTMLから必要なデータを取得しSiteDataを作成できるか
 func TestGetSiteData(t *testing.T) {
 	file, _ := ioutil.ReadFile("testdata/test.html")
 	stringReader := strings.NewReader(string(file))
@@ -149,25 +199,25 @@ func TestGetSiteData(t *testing.T) {
 	if err != nil {
 		t.Error("Can not load test data")
 	}
-
-	actual := getSiteData(doc)
+	siteData := SiteData{}
+	actual := getSiteData(siteData, doc)
 	expected := SiteData{
 		Title:         "test normal title",
 		Description:   "test normal description",
 		Favicon:       "/favicon.ico",
 		OgType:        "article",
-		OgImage:       "https://test/ogp-image.png",
+		OgImage:       "https://test.com/ogp-image.png",
 		OgTitle:       "test og title",
 		OgDescription: "test og description",
 		OgSiteName:    "my super blog",
-		OgUrl:         "https://test/"}
+		OgUrl:         "https://test.com/article"}
 
 	if actual != expected {
 		t.Errorf("getTitle() = '%s', but extected value is '%s'", actual, expected)
 	}
 }
 
-// OGタグが一部なかった場合のテスト
+// HTMLから必要なデータを取得しSiteDataを作成できるか（OGタグが一部なかった場合）
 func TestGetWithoutOGSiteData(t *testing.T) {
 	file, _ := ioutil.ReadFile("testdata/test_without_og.html")
 	stringReader := strings.NewReader(string(file))
@@ -176,7 +226,8 @@ func TestGetWithoutOGSiteData(t *testing.T) {
 		t.Error("Can not load test data")
 	}
 
-	actual := getSiteData(doc)
+	siteData := SiteData{}
+	actual := getSiteData(siteData, doc)
 	expected := SiteData{
 		Title:       "test normal title",
 		Description: "test normal description",
@@ -185,4 +236,40 @@ func TestGetWithoutOGSiteData(t *testing.T) {
 	if actual != expected {
 		t.Errorf("getTitle() = '%s', but extected value is '%s'", actual, expected)
 	}
+}
+
+func expectedHtml() string {
+	return `<div class="belg-link">
+  <div class="belg-left">
+    <img src="https://test.com/ogp-image.png" />
+  </div>
+  <div class="belg-right">
+    <div class="belg-title">
+      <a href="https://test.com/article" target="_blank">test og title</a>
+    </div>
+    <div class="belg-description">test og description</div>
+    <div class="belg-site">
+      <img src="https://test.com/favicon.ico" class="belg-site-icon">
+      <span class="belg-site-name">my super blog</span>
+    </div>
+  </div>
+</div>`
+}
+
+func expectedHtmlWithoutOg() string {
+	return `<div class="belg-link">
+  <div class="belg-left">
+    <img src="" />
+  </div>
+  <div class="belg-right">
+    <div class="belg-title">
+      <a href="https://test.com/article" target="_blank">test normal title</a>
+    </div>
+    <div class="belg-description">test normal description</div>
+    <div class="belg-site">
+      <img src="https://test.com/favicon.ico" class="belg-site-icon">
+      <span class="belg-site-name">test.com</span>
+    </div>
+  </div>
+</div>`
 }
