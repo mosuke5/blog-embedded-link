@@ -17,23 +17,8 @@ func TestBuildEmbededLink(t *testing.T) {
 	httpmock.RegisterResponder("GET", "https://test.com/article",
 		httpmock.NewStringResponder(200, httpmock.File("testdata/test.html").String()))
 
-	oldExit := osExit
-
-	defer func() { osExit = oldExit }()
-
-	var status int
-	exit := func(code int) {
-		status = code
-	}
-	osExit = exit
-
 	url := "https://test.com/article"
 	actual := buildEmbededLink(url)
-
-	if exp := 0; status != exp {
-		t.Errorf("Expected exit code: %d, status: %d", exp, status)
-	}
-
 	expected := expectedHtml()
 
 	if actual != expected {
@@ -49,23 +34,8 @@ func TestBuildEmbededLinkWithoutOg(t *testing.T) {
 	httpmock.RegisterResponder("GET", "https://test.com/article",
 		httpmock.NewStringResponder(200, httpmock.File("testdata/test_without_og.html").String()))
 
-	oldExit := osExit
-
-	defer func() { osExit = oldExit }()
-
-	var status int
-	exit := func(code int) {
-		status = code
-	}
-	osExit = exit
-
 	url := "https://test.com/article"
 	actual := buildEmbededLink(url)
-
-	if exp := 0; status != exp {
-		t.Errorf("Expected exit code: %d, status: %d", exp, status)
-	}
-
 	expected := expectedHtmlWithoutOg()
 
 	if actual != expected {
@@ -98,25 +68,28 @@ func TestBuildEmbededLinkWithWrongUrl(t *testing.T) {
 	}
 }
 
+// リダイレクトするサイトの場合、エラーを返さずリダイレクト先のページで情報を取得すること
 func TestBuildEmbededLinkWithRedirectUrl(t *testing.T) {
-	oldExit := osExit
+	httpmock.Activate()
+	defer httpmock.DeactivateAndReset()
 
-	defer func() { osExit = oldExit }()
+	httpmock.RegisterResponder("GET", "https://test.com/article",
+		httpmock.NewStringResponder(200, httpmock.File("testdata/test.html").String()))
+	httpmock.RegisterResponder("GET", "https://short-url.com/xxx",
+		responderWithLocationHeader(301, "foo", "https://test.com/article"))
 
-	var status int
-	exit := func(code int) {
-		status = code
-	}
-	osExit = exit
-
-	url := "http://blog.mosuke.tech/"
+	url := "https://short-url.com/xxx"
 	buildEmbededLink(url)
 
-	if exp := 0; status != exp {
-		t.Errorf("Expected exit code: %d, status: %d", exp, status)
+	actual := buildEmbededLink(url)
+	expected := expectedHtml()
+
+	if actual != expected {
+		t.Errorf("getTitle() = '%s', but extected value is '%s'", actual, expected)
 	}
 }
 
+// ResultDataから適切なHTMLを生成できること
 func TestBuildResultHtml(t *testing.T) {
 	resultData := ResultData{
 		Title:       "test og title",
@@ -258,9 +231,6 @@ func expectedHtml() string {
 
 func expectedHtmlWithoutOg() string {
 	return `<div class="belg-link">
-  <div class="belg-left">
-    <img src="" />
-  </div>
   <div class="belg-right">
     <div class="belg-title">
       <a href="https://test.com/article" target="_blank">test normal title</a>
@@ -272,4 +242,10 @@ func expectedHtmlWithoutOg() string {
     </div>
   </div>
 </div>`
+}
+
+func responderWithLocationHeader(s int, c string, location string) httpmock.Responder {
+	resp := httpmock.NewStringResponse(s, c)
+	resp.Header.Set("Location", location)
+	return httpmock.ResponderFromResponse(resp)
 }

@@ -1,7 +1,9 @@
 <div class="belg-link">
+  {{ if .Image -}}
   <div class="belg-left">
     <img src="{{ .Image }}" />
   </div>
+  {{ end -}}
   <div class="belg-right">
     <div class="belg-title">
       <a href="{{ .Url }}" target="_blank">{{ .Title }}</a>

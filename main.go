@@ -44,15 +44,10 @@ func main() {
 		log.Fatal("url arg is required.")
 	}
 	url := os.Args[1]
-	fmt.Print(buildEmbededLink(url))
+	fmt.Println(buildEmbededLink(url))
 }
 
 func buildEmbededLink(requestUrl string) string {
-	parsedUrl, err := url.Parse(requestUrl)
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	resp, err := http.Get(requestUrl)
 
 	if err != nil {
@@ -71,11 +66,15 @@ func buildEmbededLink(requestUrl string) string {
 		log.Fatal(err)
 	}
 
+	parsedUrl, err := url.Parse(resp.Request.URL.String())
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	siteData := SiteData{
 		RequestUrl:     resp.Request.URL.String(),
 		RequestBaseUrl: parsedUrl.Scheme + "://" + parsedUrl.Host}
 	siteData = getSiteData(siteData, doc)
-	fmt.Println(siteData)
 	resultData := buildResultData(siteData)
 	return buildResultHtml(resultData)
 }
