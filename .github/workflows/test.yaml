@@ -1,0 +1,16 @@
+name: Unit testing
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: [ '1.16', '1.15', '1.14' ]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.go }}
+      - name: Exec unit test
+        run: go test -v -cover
