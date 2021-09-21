@@ -60,7 +60,7 @@ func TestBuildEmbededLinkNoFavicon(t *testing.T) {
 	}
 }
 
-func TestBuildEmbededLinkWithWrongUrl(t *testing.T) {
+func TestBuildEmbededLinkWithNotFoundUrl(t *testing.T) {
 	httpmock.Activate()
 	defer httpmock.DeactivateAndReset()
 
