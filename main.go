@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -121,7 +122,11 @@ func buildResultData(siteData SiteData) ResultData {
 	}
 
 	if siteData.Favicon != "" {
-		resultData.Favicon = siteData.RequestBaseUrl + siteData.Favicon
+		if isExternal(siteData.Favicon) {
+			resultData.Favicon = siteData.Favicon
+		} else {
+			resultData.Favicon = siteData.RequestBaseUrl + siteData.Favicon
+		}
 	}
 
 	return resultData
@@ -196,4 +201,9 @@ func getDomain(requestUrl string) string {
 	}
 
 	return u.Hostname()
+}
+
+func isExternal(faviconPath string) bool {
+	r := regexp.MustCompile(`^(\/\/|http)`)
+	return r.MatchString(faviconPath)
 }

@@ -204,6 +204,36 @@ func TestBuildResultDataNoFavicon(t *testing.T) {
 	}
 }
 
+func TestBuildResultDataWithFaviconFromExternal(t *testing.T) {
+	sitedata := SiteData{
+		RequestUrl:     "https://test.com/article",
+		RequestBaseUrl: "https://test.com",
+		Title:          "test normal title",
+		Description:    "test normal description",
+		Favicon:        "//some-cdn.com/favicon.ico",
+		OgType:         "article",
+		OgImage:        "https://test.com/ogp-image.png",
+		OgTitle:        "test og title",
+		OgDescription:  "test og description",
+		OgSiteName:     "my super blog",
+		OgUrl:          "https://test.com/article"}
+
+	actual := buildResultData(sitedata)
+	expected := ResultData{
+		Title:       "test og title",
+		Description: "test og description",
+		Favicon:     "//some-cdn.com/favicon.ico",
+		Type:        "article",
+		Image:       "https://test.com/ogp-image.png",
+		SiteName:    "my super blog",
+		Url:         "https://test.com/article",
+		BaseUrl:     "https://test.com"}
+
+	if actual != expected {
+		t.Errorf("getTitle() = '%s', but extected value is '%s'", actual, expected)
+	}
+}
+
 // HTMLから必要なデータを取得しSiteDataを作成できるか
 func TestGetSiteData(t *testing.T) {
 	file, _ := ioutil.ReadFile("testdata/test.html")
