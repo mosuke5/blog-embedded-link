@@ -1,7 +1,10 @@
 package main
 
 import (
+	"bytes"
+	"html/template"
 	"io/ioutil"
+	"log"
 	"strings"
 	"testing"
 
@@ -18,8 +21,18 @@ func TestBuildEmbededLink(t *testing.T) {
 		httpmock.NewStringResponder(200, httpmock.File("testdata/test.html").String()))
 
 	url := "https://test.com/article"
+	resultData := ResultData{
+		Title:       "test og title",
+		Description: "test og description",
+		Favicon:     "https://test.com/favicon.ico",
+		Type:        "article",
+		Image:       "https://test.com/ogp-image.png",
+		SiteName:    "my super blog",
+		Url:         "https://test.com/article",
+		BaseUrl:     "https://test.com/"}
+
 	actual := buildEmbededLink(url)
-	expected := expectedHtml()
+	expected := expectedHtml(resultData)
 
 	if actual != expected {
 		t.Errorf("getTitle() = '%s', but extected value is '%s'", actual, expected)
@@ -35,8 +48,16 @@ func TestBuildEmbededLinkWithoutOg(t *testing.T) {
 		httpmock.NewStringResponder(200, httpmock.File("testdata/test_without_og.html").String()))
 
 	url := "https://test.com/article"
+	resultData := ResultData{
+		Title:       "test normal title",
+		Description: "test normal description",
+		Favicon:     "https://test.com/favicon.ico",
+		SiteName:    "test.com",
+		Url:         "https://test.com/article",
+		BaseUrl:     "https://test.com/"}
+
 	actual := buildEmbededLink(url)
-	expected := expectedHtmlWithoutOg()
+	expected := expectedHtml(resultData)
 
 	if actual != expected {
 		t.Errorf("getTitle() = '%s', but extected value is '%s'", actual, expected)
@@ -52,8 +73,17 @@ func TestBuildEmbededLinkNoFavicon(t *testing.T) {
 		httpmock.NewStringResponder(200, httpmock.File("testdata/test_no_favicon.html").String()))
 
 	url := "https://test.com/article"
+	resultData := ResultData{
+		Title:       "test og title",
+		Description: "test og description",
+		Type:        "article",
+		Image:       "https://test.com/ogp-image.png",
+		SiteName:    "my super blog",
+		Url:         "https://test.com/article",
+		BaseUrl:     "https://test.com/"}
+
 	actual := buildEmbededLink(url)
-	expected := expectedHtmlNoFavicon()
+	expected := expectedHtml(resultData)
 
 	if actual != expected {
 		t.Errorf("getTitle() = '%s', but extected value is '%s'", actual, expected)
@@ -96,10 +126,19 @@ func TestBuildEmbededLinkWithRedirectUrl(t *testing.T) {
 		responderWithLocationHeader(301, "foo", "https://test.com/article"))
 
 	url := "https://short-url.com/xxx"
-	buildEmbededLink(url)
+	resultData := ResultData{
+		Title:       "test og title",
+		Description: "test og description",
+		Favicon:     "https://test.com/favicon.ico",
+		Type:        "article",
+		Image:       "https://test.com/ogp-image.png",
+		SiteName:    "my super blog",
+		Url:         "https://test.com/article",
+		BaseUrl:     "https://test.com/"}
 
+	buildEmbededLink(url)
 	actual := buildEmbededLink(url)
-	expected := expectedHtml()
+	expected := expectedHtml(resultData)
 
 	if actual != expected {
 		t.Errorf("getTitle() = '%s', but extected value is '%s'", actual, expected)
@@ -119,7 +158,21 @@ func TestBuildResultHtml(t *testing.T) {
 		BaseUrl:     "https://test.com"}
 
 	actual := buildResultHtml(resultData)
-	expected := expectedHtml()
+	expected := `<div class="belg-link">
+  <div class="belg-left">
+    <img src="https://test.com/ogp-image.png" />
+  </div>
+  <div class="belg-right">
+    <div class="belg-title">
+      <a href="https://test.com/article" target="_blank">test og title</a>
+    </div>
+    <div class="belg-description">test og description</div>
+    <div class="belg-site">
+      <img src="https://test.com/favicon.ico" class="belg-site-icon">
+      <span class="belg-site-name">my super blog</span>
+    </div>
+  </div>
+</div>`
 
 	if actual != expected {
 		t.Errorf("getTitle() = '%s', but extected value is '%s'", actual, expected)
@@ -281,54 +334,18 @@ func TestGetWithoutOGSiteData(t *testing.T) {
 	}
 }
 
-func expectedHtml() string {
-	return `<div class="belg-link">
-  <div class="belg-left">
-    <img src="https://test.com/ogp-image.png" />
-  </div>
-  <div class="belg-right">
-    <div class="belg-title">
-      <a href="https://test.com/article" target="_blank">test og title</a>
-    </div>
-    <div class="belg-description">test og description</div>
-    <div class="belg-site">
-      <img src="https://test.com/favicon.ico" class="belg-site-icon">
-      <span class="belg-site-name">my super blog</span>
-    </div>
-  </div>
-</div>`
-}
+func expectedHtml(resultData ResultData) string {
+	t, err := template.ParseFiles("template/result.html")
+	if err != nil {
+		log.Fatalf("template error: %v", err)
+	}
 
-func expectedHtmlWithoutOg() string {
-	return `<div class="belg-link">
-  <div class="belg-right">
-    <div class="belg-title">
-      <a href="https://test.com/article" target="_blank">test normal title</a>
-    </div>
-    <div class="belg-description">test normal description</div>
-    <div class="belg-site">
-      <img src="https://test.com/favicon.ico" class="belg-site-icon">
-      <span class="belg-site-name">test.com</span>
-    </div>
-  </div>
-</div>`
-}
-
-func expectedHtmlNoFavicon() string {
-	return `<div class="belg-link">
-  <div class="belg-left">
-    <img src="https://test.com/ogp-image.png" />
-  </div>
-  <div class="belg-right">
-    <div class="belg-title">
-      <a href="https://test.com/article" target="_blank">test og title</a>
-    </div>
-    <div class="belg-description">test og description</div>
-    <div class="belg-site">
-      <span class="belg-site-name">my super blog</span>
-    </div>
-  </div>
-</div>`
+	var result bytes.Buffer
+	err = t.Execute(&result, resultData)
+	if err != nil {
+		log.Fatalf("template error: %v", err)
+	}
+	return result.String()
 }
 
 func responderWithLocationHeader(s int, c string, location string) httpmock.Responder {
