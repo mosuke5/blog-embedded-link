@@ -1,10 +1,12 @@
-<div class="belg-link">
+<div class="belg-link row">
   {{ if .Image -}}
-  <div class="belg-left">
-    <img src="{{ .Image }}" />
+  <div class="belg-left col-md-2 d-none d-md-block">
+    <a href="{{ .Url }}" target="_blank">
+      <img class="belg-site-image" src="{{ .Image }}" />
+    </a>
   </div>
   {{ end -}}
-  <div class="belg-right">
+  <div class="belg-right col-md-10">
     <div class="belg-title">
       <a href="{{ .Url }}" target="_blank">{{ .Title }}</a>
     </div>
