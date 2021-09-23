@@ -6,7 +6,11 @@
     </a>
   </div>
   {{ end -}}
+  {{ if .Image -}}
   <div class="belg-right col-md-10">
+  {{ else -}}
+  <div class="belg-right col-md-12">
+  {{ end -}}
     <div class="belg-title">
       <a href="{{ .Url }}" target="_blank">{{ .Title }}</a>
     </div>
